@@ -1,0 +1,84 @@
+trigger:
+- none
+
+pool:
+  vmImage: 'macos-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  outputDirectory: '$(build.binariesDirectory)/$(buildConfiguration)'
+
+stages:
+- stage: Acceptance
+  jobs:
+  - deployment: 'Acceptance'
+    environment: 'Acceptance'
+    strategy:
+     runOnce:
+       deploy:
+         steps:
+          - checkout: self
+
+          - task: NuGetToolInstaller@1
+
+          - task: NuGetCommand@2
+            inputs:
+              restoreSolution: '**/*.sln'
+
+          - task: XamarinAndroid@1
+            inputs:
+              projectFile: '**/*droid*.csproj'
+              outputDirectory: '$(outputDirectory)'
+              configuration: '$(buildConfiguration)'
+              msbuildArguments: '/p:PUBLISH_ACCEPTANCE=true'
+              
+          - task: AndroidSigning@3
+            inputs:
+              apkFiles: '**/*.apk'
+              apksignerKeystoreFile: '<Secure-file-containing-Keystore>'
+              apksignerKeystorePassword: '$(<Variable-with-password-for-keystore>)'
+              apksignerKeystoreAlias: '<Keystore-Alias-for-private-key>'
+              apksignerKeyPassword: '$(<Variable-with-password-for-private-key>)'
+
+          - task: GooglePlayRelease@3
+            inputs:
+              serviceConnection: 'Google play store'
+              apkFile: '**/*.apk' 
+              track: 'internal'
+              
+
+- stage: Production
+  jobs:
+  - deployment: 'Production'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+          - task: NuGetToolInstaller@1
+
+          - task: NuGetCommand@2
+            inputs:
+              restoreSolution: '**/*.sln'
+
+          - task: XamarinAndroid@1
+            inputs:
+              projectFile: '**/*droid*.csproj'
+              outputDirectory: '$(outputDirectory)'
+              configuration: '$(buildConfiguration)'
+              msbuildArguments: '/p:PUBLISH_RELEASE=true'
+
+          - task: AndroidSigning@3
+            inputs:
+              apkFiles: '**/*.apk'
+              apksignerKeystoreFile: '<Secure-file-containing-Keystore>'
+              apksignerKeystorePassword: '$(<Variable-with-password-for-keystore>)'
+              apksignerKeystoreAlias: '<Keystore-Alias-for-private-key>'
+              apksignerKeyPassword: '$(<Variable-with-password-for-private-key>)'
+
+          - task: GooglePlayRelease@3
+            inputs:
+              serviceConnection: 'Google play store'
+              apkFile: '**/*.apk' 
+              track: 'production'

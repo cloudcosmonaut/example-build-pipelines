@@ -1,0 +1,104 @@
+trigger:
+- none
+
+pool:
+  vmImage: 'macos-latest'
+
+stages:
+- stage: Acceptance
+  jobs:
+  - deployment: 'Acceptance'
+    environment: 'Acceptance'
+    strategy:
+     runOnce:
+       deploy:
+         steps:
+          - checkout: self
+            
+          - task: InstallAppleProvisioningProfile@1
+            inputs:
+              provisioningProfileLocation: 'sourceRepository'
+              provProfileSourceRepository: '<Path-to-mobile-provisioning-profile-in-repository>'
+
+          - task: InstallAppleCertificate@2
+            inputs:
+              certSecureFile: '<Name-of-secure-file-in-azdo-with-private-key>'
+              certPwd: '$(<variable-with-private-key-password>)'
+              keychain: 'temp'
+
+          - task: NuGetToolInstaller@1
+
+          - task: NuGetCommand@2
+            inputs:
+              command: 'restore'
+              restoreSolution: '**/*.sln'
+              feedsToUse: 'select'
+
+          - task: XamariniOS@2
+            inputs:
+              solutionFile: '**/*.sln'
+              configuration: 'Release'
+              packageApp: true
+              runNugetRestore: false
+              signingIdentity: '<Update with your own Apple Distribution Signing Identity>'
+              signingProvisioningProfileID: '<Update with your own Profile ID>'
+              args: '/p:PUBLISH_ACCEPTANCE=true'
+
+          - task: AppStoreRelease@1
+            inputs:
+              serviceEndpoint: 'Apple AppStore'
+              appIdentifier: '<App-Identifier>'
+              appType: 'iOS'
+              ipaPath: '**/*.ipa'
+              releaseTrack: 'TestFlight'
+              shouldSkipSubmission: false
+              teamId: '<Apple-Developer-Team-Id>'
+
+- stage: Production
+  jobs:
+  - deployment: 'Production'
+    environment: 'Production'
+    strategy:
+     runOnce:
+       deploy:
+         steps:
+          - checkout: self
+          - task: InstallAppleProvisioningProfile@1
+            inputs:
+              provisioningProfileLocation: 'sourceRepository'
+              provProfileSourceRepository: '<Path-to-mobile-provisioning-profile-in-repository>'
+
+          - task: InstallAppleCertificate@2
+            inputs:
+              certSecureFile: '<Name-of-secure-file-in-azdo-with-private-key>'
+              certPwd: '$(<variable-with-private-key-password>)'
+              keychain: 'temp'
+
+          - task: NuGetToolInstaller@1
+
+          - task: NuGetCommand@2
+            inputs:
+              command: 'restore'
+              restoreSolution: '**/*.sln'
+              feedsToUse: 'select'
+
+          - task: XamariniOS@2
+            inputs:
+              solutionFile: '**/*.sln'
+              configuration: 'Release'
+              packageApp: true
+              runNugetRestore: false
+              signingIdentity: '<Update with your own Apple Distribution Signing Identity>'
+              signingProvisioningProfileID: '<Update with your own Profile ID>'
+              args: '/p:PUBLISH_RELEASE=true'
+
+          - task: AppStoreRelease@1
+            inputs:
+              serviceEndpoint: 'Apple AppStore'
+              appIdentifier: '<App-Identifier>'
+              appType: 'iOS'
+              ipaPath: '**/*.ipa'
+              releaseTrack: 'Production'
+              teamId: '<Apple-Developer-Team-Id>'
+        
+        
