@@ -7,6 +7,20 @@ pool:
 variables:
   buildConfiguration: 'Release'
   outputDirectory: '$(build.binariesDirectory)/$(buildConfiguration)'
+  acceptance:
+    apksignerKeystoreFile: # Reference to Secure file containing KeyStore DON'T put the Keystore in your repo!
+    apksignerKeystorePassword: # Variable pointing the Keystore password in Azure KeyVault DON'T put the password in the pipeline!
+    apksignerKeystoreAlias: # Alias name of Private Key in KeyStore
+    apksignerKeyPassword: # Variable pointing the Key password in Azure KeyVault DON'T put the password in the pipeline!
+    serviceConnection: #Name of the Service Connection to the Google Play Console
+    track: 'internal'
+  production:
+    apksignerKeystoreFile: # Reference to Secure file containing KeyStore DON'T put the Keystore in your repo!
+    apksignerKeystorePassword: # Variable pointing the Keystore password in Azure KeyVault DON'T put the password in the pipeline!
+    apksignerKeystoreAlias: # Alias name of Private Key in KeyStore
+    apksignerKeyPassword: # Variable pointing the Key password in Azure KeyVault DON'T put the password in the pipeline!
+    serviceConnection: #Name of the Service Connection to the Google Play Console
+    track: 'production'
 
 stages:
 - stage: Acceptance
@@ -35,18 +49,17 @@ stages:
           - task: AndroidSigning@3
             inputs:
               apkFiles: '**/*.apk'
-              apksignerKeystoreFile: '<Secure-file-containing-Keystore>'
-              apksignerKeystorePassword: '$(<Variable-with-password-for-keystore>)'
-              apksignerKeystoreAlias: '<Keystore-Alias-for-private-key>'
-              apksignerKeyPassword: '$(<Variable-with-password-for-private-key>)'
+              apksignerKeystoreFile: '$(acceptance.apksignerKeystoreFile)'
+              apksignerKeystorePassword: '$(acceptance.apksignerKeystorePassword)'
+              apksignerKeystoreAlias: '$(acceptance.apksignerKeystoreAlias)'
+              apksignerKeyPassword: '$(acceptance.apksignerKeyPassword)'
 
           - task: GooglePlayRelease@3
             inputs:
-              serviceConnection: 'Google play store'
+              serviceConnection: '$(acceptance.serviceConnection)'
               apkFile: '**/*.apk' 
-              track: 'internal'
+              track: '$(acceptance.track)'
               
-
 - stage: Production
   jobs:
   - deployment: 'Production'
@@ -72,13 +85,13 @@ stages:
           - task: AndroidSigning@3
             inputs:
               apkFiles: '**/*.apk'
-              apksignerKeystoreFile: '<Secure-file-containing-Keystore>'
-              apksignerKeystorePassword: '$(<Variable-with-password-for-keystore>)'
-              apksignerKeystoreAlias: '<Keystore-Alias-for-private-key>'
-              apksignerKeyPassword: '$(<Variable-with-password-for-private-key>)'
+              apksignerKeystoreFile: '$(production.apksignerKeystoreFile)'
+              apksignerKeystorePassword: '$(production.apksignerKeystorePassword)'
+              apksignerKeystoreAlias: '$(production.apksignerKeystoreAlias)'
+              apksignerKeyPassword: '$(production.apksignerKeyPassword)'
 
           - task: GooglePlayRelease@3
             inputs:
-              serviceConnection: 'Google play store'
+              serviceConnection: '$(acceptance.serviceConnection)'
               apkFile: '**/*.apk' 
-              track: 'production'
+              track: '$(production.apksignerKeyPassword)'
